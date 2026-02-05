@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { canManageAllUsers, formatDateTime } from '@/lib/utils';
 import type { Profile, UserRole } from '@/types/database';
 import { Plus, Upload, Trash2, Edit2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Papa from 'papaparse';
 
 const ROLE_OPTIONS = [
@@ -25,7 +25,8 @@ const ROLE_OPTIONS = [
 
 export default function UsersPage() {
   const { profile: currentProfile } = useAuth();
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

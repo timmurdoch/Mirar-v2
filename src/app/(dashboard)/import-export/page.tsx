@@ -23,7 +23,8 @@ interface ImportResult {
 }
 
 export default function ImportExportPage() {
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [questionnaires, setQuestionnaires] = useState<QuestionnaireData[]>([]);
