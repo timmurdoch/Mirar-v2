@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Facility, FilterConfig, Question, TooltipConfig } from '@/types/database';
 import { List, Map, Plus, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ViewMode = 'map' | 'list';
 
@@ -24,7 +24,8 @@ export default function FacilitiesPage() {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
   // Fetch all data
   const fetchData = useCallback(async () => {

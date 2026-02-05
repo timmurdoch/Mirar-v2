@@ -17,7 +17,7 @@ import type { Audit, AuditAnswer, ChangeLog, Facility, Question, QuestionnaireVe
 import { ArrowLeft, Calendar, Edit2, History, MapPin, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SectionWithQuestions extends Section {
   questions: Question[];
@@ -35,7 +35,8 @@ export default function FacilityDetailPage() {
   const params = useParams();
   const router = useRouter();
   const facilityId = params.id as string;
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const { profile } = useAuth();
 
   const [facility, setFacility] = useState<Facility | null>(null);

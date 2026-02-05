@@ -24,7 +24,7 @@ import {
   Trash2,
   Archive,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SectionWithQuestions extends Section {
   questions: Question[];
@@ -43,7 +43,8 @@ const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
 ];
 
 export default function QuestionnairePage() {
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const [versions, setVersions] = useState<QuestionnaireVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<QuestionnaireData | null>(null);
   const [loading, setLoading] = useState(true);
