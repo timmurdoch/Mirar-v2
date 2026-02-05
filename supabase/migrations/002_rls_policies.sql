@@ -1,4 +1,4 @@
--- Row Level Security Policies
+-- Row Level Security Policies (Compatible with Supabase Cloud)
 -- Migration: 002_rls_policies
 
 -- Enable RLS on all tables
@@ -14,25 +14,25 @@ ALTER TABLE public.tooltip_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.filter_config ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- HELPER FUNCTIONS FOR RLS
+-- HELPER FUNCTIONS FOR RLS (in public schema)
 -- ============================================
 
 -- Get current user's role
-CREATE OR REPLACE FUNCTION auth.user_role()
+CREATE OR REPLACE FUNCTION public.user_role()
 RETURNS user_role AS $$
     SELECT role FROM public.profiles WHERE id = auth.uid();
 $$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
 -- Check if user is admin or super_admin
-CREATE OR REPLACE FUNCTION auth.is_admin()
+CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
-    SELECT auth.user_role() IN ('admin', 'super_admin');
+    SELECT public.user_role() IN ('admin', 'super_admin');
 $$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
 -- Check if user is super_admin
-CREATE OR REPLACE FUNCTION auth.is_super_admin()
+CREATE OR REPLACE FUNCTION public.is_super_admin()
 RETURNS BOOLEAN AS $$
-    SELECT auth.user_role() = 'super_admin';
+    SELECT public.user_role() = 'super_admin';
 $$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
 -- ============================================
@@ -47,31 +47,31 @@ CREATE POLICY "Users can view own profile"
 -- Admins can view all profiles
 CREATE POLICY "Admins can view all profiles"
     ON public.profiles FOR SELECT
-    USING (auth.is_admin());
+    USING (public.is_admin());
 
 -- Super admins can create any user
 CREATE POLICY "Super admins can create users"
     ON public.profiles FOR INSERT
-    WITH CHECK (auth.is_super_admin());
+    WITH CHECK (public.is_super_admin());
 
 -- Admins can create auditors only
 CREATE POLICY "Admins can create auditors"
     ON public.profiles FOR INSERT
     WITH CHECK (
-        auth.user_role() = 'admin'
-        AND (NEW.role = 'auditor')
+        public.user_role() = 'admin'
+        AND role = 'auditor'
     );
 
 -- Super admins can update any user
 CREATE POLICY "Super admins can update users"
     ON public.profiles FOR UPDATE
-    USING (auth.is_super_admin());
+    USING (public.is_super_admin());
 
 -- Admins can update auditors only
 CREATE POLICY "Admins can update auditors"
     ON public.profiles FOR UPDATE
     USING (
-        auth.user_role() = 'admin'
+        public.user_role() = 'admin'
         AND role = 'auditor'
     );
 
@@ -84,7 +84,7 @@ CREATE POLICY "Users can update own profile"
 -- Super admins can delete users
 CREATE POLICY "Super admins can delete users"
     ON public.profiles FOR DELETE
-    USING (auth.is_super_admin());
+    USING (public.is_super_admin());
 
 -- ============================================
 -- FACILITIES POLICIES
@@ -98,7 +98,7 @@ CREATE POLICY "Authenticated users can view facilities"
 -- Super admins can view deleted facilities
 CREATE POLICY "Super admins can view deleted facilities"
     ON public.facilities FOR SELECT
-    USING (auth.is_super_admin() AND is_deleted = true);
+    USING (public.is_super_admin() AND is_deleted = true);
 
 -- All authenticated users can create facilities
 CREATE POLICY "Authenticated users can create facilities"
@@ -113,8 +113,8 @@ CREATE POLICY "Authenticated users can update facilities"
 -- Super admins can soft delete facilities
 CREATE POLICY "Super admins can delete facilities"
     ON public.facilities FOR UPDATE
-    USING (auth.is_super_admin())
-    WITH CHECK (auth.is_super_admin());
+    USING (public.is_super_admin())
+    WITH CHECK (public.is_super_admin());
 
 -- ============================================
 -- QUESTIONNAIRE VERSION POLICIES
@@ -128,17 +128,17 @@ CREATE POLICY "Users can view published questionnaires"
 -- Admins can view all questionnaires
 CREATE POLICY "Admins can view all questionnaires"
     ON public.questionnaire_versions FOR SELECT
-    USING (auth.is_admin());
+    USING (public.is_admin());
 
 -- Admins can create questionnaires
 CREATE POLICY "Admins can create questionnaires"
     ON public.questionnaire_versions FOR INSERT
-    WITH CHECK (auth.is_admin());
+    WITH CHECK (public.is_admin());
 
 -- Admins can update draft questionnaires
 CREATE POLICY "Admins can update questionnaires"
     ON public.questionnaire_versions FOR UPDATE
-    USING (auth.is_admin());
+    USING (public.is_admin());
 
 -- ============================================
 -- SECTIONS POLICIES
@@ -152,24 +152,24 @@ CREATE POLICY "Users can view sections"
         AND EXISTS (
             SELECT 1 FROM public.questionnaire_versions qv
             WHERE qv.id = questionnaire_version_id
-            AND (qv.status = 'published' OR auth.is_admin())
+            AND (qv.status = 'published' OR public.is_admin())
         )
     );
 
 -- Admins can create sections
 CREATE POLICY "Admins can create sections"
     ON public.sections FOR INSERT
-    WITH CHECK (auth.is_admin());
+    WITH CHECK (public.is_admin());
 
 -- Admins can update sections
 CREATE POLICY "Admins can update sections"
     ON public.sections FOR UPDATE
-    USING (auth.is_admin());
+    USING (public.is_admin());
 
 -- Admins can delete sections
 CREATE POLICY "Admins can delete sections"
     ON public.sections FOR DELETE
-    USING (auth.is_admin());
+    USING (public.is_admin());
 
 -- ============================================
 -- QUESTIONS POLICIES
@@ -184,19 +184,19 @@ CREATE POLICY "Users can view questions"
             SELECT 1 FROM public.sections s
             JOIN public.questionnaire_versions qv ON qv.id = s.questionnaire_version_id
             WHERE s.id = section_id
-            AND (qv.status = 'published' OR auth.is_admin())
+            AND (qv.status = 'published' OR public.is_admin())
         )
     );
 
 -- Admins can create questions
 CREATE POLICY "Admins can create questions"
     ON public.questions FOR INSERT
-    WITH CHECK (auth.is_admin());
+    WITH CHECK (public.is_admin());
 
 -- Admins can update questions
 CREATE POLICY "Admins can update questions"
     ON public.questions FOR UPDATE
-    USING (auth.is_admin());
+    USING (public.is_admin());
 
 -- ============================================
 -- AUDITS POLICIES
@@ -243,7 +243,7 @@ CREATE POLICY "Users can update audit answers"
 -- Admins can view all change logs
 CREATE POLICY "Admins can view change logs"
     ON public.change_logs FOR SELECT
-    USING (auth.is_admin());
+    USING (public.is_admin());
 
 -- All authenticated users can create change logs (via triggers)
 CREATE POLICY "Users can create change logs"
@@ -269,10 +269,10 @@ CREATE POLICY "Users can view filter config"
 -- Admins can manage configs
 CREATE POLICY "Admins can manage tooltip config"
     ON public.tooltip_config FOR ALL
-    USING (auth.is_admin())
-    WITH CHECK (auth.is_admin());
+    USING (public.is_admin())
+    WITH CHECK (public.is_admin());
 
 CREATE POLICY "Admins can manage filter config"
     ON public.filter_config FOR ALL
-    USING (auth.is_admin())
-    WITH CHECK (auth.is_admin());
+    USING (public.is_admin())
+    WITH CHECK (public.is_admin());
