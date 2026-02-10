@@ -34,24 +34,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string, userEmail?: string) => {
+    // Use maybeSingle() instead of single() to handle missing profiles gracefully
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching profile:', error);
       return null;
     }
 
-    return data as Profile;
+    // If profile exists, return it
+    if (data) {
+      return data as Profile;
+    }
+
+    // Profile doesn't exist - try to create one
+    // This handles the case where the trigger didn't fire or failed
+    console.log('Profile not found, attempting to create one...');
+
+    if (!userEmail) {
+      console.error('Cannot create profile: no email provided');
+      return null;
+    }
+
+    const { data: newProfile, error: createError } = await supabase
+      .from('profiles')
+      .insert({
+        id: userId,
+        email: userEmail,
+        full_name: '',
+        role: 'auditor',
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Error creating profile:', createError);
+      return null;
+    }
+
+    console.log('Profile created successfully');
+    return newProfile as Profile;
   }, [supabase]);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
-      const profileData = await fetchProfile(user.id);
+      const profileData = await fetchProfile(user.id, user.email);
       setProfile(profileData);
     }
   }, [user, fetchProfile]);
@@ -59,12 +91,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        console.log('Initializing auth...');
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
+          console.log('Session found for user:', session.user.email);
           setUser(session.user);
-          const profileData = await fetchProfile(session.user.id);
+          const profileData = await fetchProfile(session.user.id, session.user.email);
+          console.log('Profile loaded:', profileData);
           setProfile(profileData);
+        } else {
+          console.log('No active session found');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -77,9 +114,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event);
         if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user);
-          const profileData = await fetchProfile(session.user.id);
+          const profileData = await fetchProfile(session.user.id, session.user.email);
           setProfile(profileData);
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
