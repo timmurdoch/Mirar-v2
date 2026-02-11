@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Textarea } from '@/components/ui/Textarea';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { createClient } from '@/lib/supabase/client';
 import { canManageAllUsers, formatDateTime } from '@/lib/utils';
 import type { Profile, UserRole } from '@/types/database';
@@ -55,17 +56,27 @@ export default function UsersPage() {
     ? ROLE_OPTIONS
     : ROLE_OPTIONS.filter((r) => r.value === 'auditor');
 
-  const fetchUsers = useCallback(async () => {
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const fetchUsers = useCallback(async (retryCount = 0) => {
     setLoading(true);
+    setFetchError(null);
     try {
-      const { data } = await supabase
+      const { data, error: queryError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
+      if (queryError) throw queryError;
       setUsers(data || []);
     } catch (err) {
       console.error('Error fetching users:', err);
+      if (retryCount < 2) {
+        const delay = 1000 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return fetchUsers(retryCount + 1);
+      }
+      setFetchError('Failed to load users. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -267,6 +278,12 @@ export default function UsersPage() {
           </div>
         }
       />
+
+      {fetchError && (
+        <div className="mb-6">
+          <ErrorAlert message={fetchError} onRetry={() => fetchUsers()} />
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">

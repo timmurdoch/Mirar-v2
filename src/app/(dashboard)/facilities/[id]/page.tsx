@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { createClient } from '@/lib/supabase/client';
 import { AUSTRALIAN_STATES, canViewChangeLogs, formatDateTime, parseCheckboxValue, stringifyCheckboxValue } from '@/lib/utils';
 import type { Audit, AuditAnswer, ChangeLog, Facility, Question, QuestionnaireVersion, Section } from '@/types/database';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { ArrowLeft, Calendar, Edit2, History, MapPin, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -53,8 +54,9 @@ export default function FacilityDetailPage() {
   const [facilityForm, setFacilityForm] = useState<Partial<Facility>>({});
   const [auditAnswers, setAuditAnswers] = useState<Record<string, string>>({});
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (retryCount = 0) => {
     setLoading(true);
+    setError('');
     try {
       // Fetch facility
       const { data: facilityData, error: facilityError } = await supabase
@@ -128,6 +130,11 @@ export default function FacilityDetailPage() {
       setChangeLogs(logsData || []);
     } catch (err) {
       console.error('Error fetching data:', err);
+      if (retryCount < 2) {
+        const delay = 1000 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return fetchData(retryCount + 1);
+      }
       setError('Failed to load facility data');
     } finally {
       setLoading(false);
@@ -430,8 +437,8 @@ export default function FacilityDetailPage() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-4">
+          <ErrorAlert message={error} onRetry={() => fetchData()} />
         </div>
       )}
 

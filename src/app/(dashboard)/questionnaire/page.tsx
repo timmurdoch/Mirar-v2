@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { createClient } from '@/lib/supabase/client';
 import { formatDateTime, generateQuestionKey } from '@/lib/utils';
 import type { Question, QuestionnaireVersion, QuestionType, Section } from '@/types/database';
@@ -48,6 +49,7 @@ export default function QuestionnairePage() {
   const [versions, setVersions] = useState<QuestionnaireVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<QuestionnaireData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Modals
@@ -105,17 +107,30 @@ export default function QuestionnairePage() {
     }
   }, [supabase]);
 
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
+  const loadData = useCallback(async (retryCount = 0) => {
+    setLoading(true);
+    setError(null);
+    try {
       const versionList = await fetchVersions();
       if (versionList.length > 0) {
         await fetchVersionDetails(versionList[0].id);
       }
+    } catch (err) {
+      console.error('Error loading questionnaire data:', err);
+      if (retryCount < 2) {
+        const delay = 1000 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return loadData(retryCount + 1);
+      }
+      setError('Failed to load questionnaire data. Please try again.');
+    } finally {
       setLoading(false);
-    };
-    init();
+    }
   }, [fetchVersions, fetchVersionDetails]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Create new version
   const handleCreateVersion = async () => {
@@ -393,6 +408,12 @@ export default function QuestionnairePage() {
           </Button>
         }
       />
+
+      {error && (
+        <div className="mb-6">
+          <ErrorAlert message={error} onRetry={() => loadData()} />
+        </div>
+      )}
 
       {/* Version selector */}
       <div className="mb-6">

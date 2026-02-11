@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { createClient } from '@/lib/supabase/client';
 import type { Question, QuestionnaireVersion, Section } from '@/types/database';
 import { Download, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
@@ -30,29 +31,44 @@ export default function ImportExportPage() {
   const [questionnaires, setQuestionnaires] = useState<QuestionnaireData[]>([]);
   const [selectedQuestionnaireId, setSelectedQuestionnaireId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
-  const fetchQuestionnaires = useCallback(async () => {
-    const { data } = await supabase
-      .from('questionnaire_versions')
-      .select(`
-        *,
-        sections (
+  const fetchQuestionnaires = useCallback(async (retryCount = 0) => {
+    setError(null);
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('questionnaire_versions')
+        .select(`
           *,
-          questions (*)
-        )
-      `)
-      .eq('status', 'published')
-      .order('published_at', { ascending: false });
+          sections (
+            *,
+            questions (*)
+          )
+        `)
+        .eq('status', 'published')
+        .order('published_at', { ascending: false });
 
-    if (data) {
-      setQuestionnaires(data as QuestionnaireData[]);
-      if (data.length > 0) {
-        setSelectedQuestionnaireId(data[0].id);
+      if (fetchError) throw fetchError;
+
+      if (data) {
+        setQuestionnaires(data as QuestionnaireData[]);
+        if (data.length > 0) {
+          setSelectedQuestionnaireId(data[0].id);
+        }
       }
+    } catch (err) {
+      console.error('Error fetching questionnaires:', err);
+      if (retryCount < 2) {
+        const delay = 1000 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return fetchQuestionnaires(retryCount + 1);
+      }
+      setError('Failed to load questionnaire data. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [supabase]);
 
   useEffect(() => {
@@ -386,6 +402,12 @@ export default function ImportExportPage() {
         title="Import / Export"
         description="Download templates and bulk import facility data"
       />
+
+      {error && (
+        <div className="mb-6">
+          <ErrorAlert message={error} onRetry={() => fetchQuestionnaires()} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Export Section */}

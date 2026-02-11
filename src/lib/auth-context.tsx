@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
 
-  const fetchProfile = useCallback(async (userId: string, userEmail?: string) => {
+  const fetchProfile = useCallback(async (userId: string, userEmail?: string, retryCount = 0): Promise<Profile | null> => {
     // Use maybeSingle() instead of single() to handle missing profiles gracefully
     const { data, error } = await supabase
       .from('profiles')
@@ -44,6 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('Error fetching profile:', error);
+      if (retryCount < 2) {
+        const delay = 1000 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return fetchProfile(userId, userEmail, retryCount + 1);
+      }
       return null;
     }
 
@@ -52,9 +57,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return data as Profile;
     }
 
-    // Profile doesn't exist - try to create one
-    // This handles the case where the trigger didn't fire or failed
-    console.log('Profile not found, attempting to create one...');
+    // Profile doesn't exist yet — may be a race with the trigger
+    // Retry before attempting manual creation
+    if (retryCount < 2) {
+      const delay = 1000 * Math.pow(2, retryCount);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return fetchProfile(userId, userEmail, retryCount + 1);
+    }
+
+    // Profile still doesn't exist after retries - try to create one
+    console.log('Profile not found after retries, attempting to create one...');
 
     if (!userEmail) {
       console.error('Cannot create profile: no email provided');

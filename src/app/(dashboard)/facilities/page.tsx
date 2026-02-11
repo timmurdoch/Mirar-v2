@@ -5,6 +5,7 @@ import { FacilityMap } from '@/components/map/FacilityMap';
 import { MapFilters } from '@/components/map/MapFilters';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { createClient } from '@/lib/supabase/client';
 import type { Facility, FilterConfig, Question, TooltipConfig } from '@/types/database';
 import { List, Map, Plus, Search } from 'lucide-react';
@@ -20,6 +21,7 @@ export default function FacilitiesPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [auditData, setAuditData] = useState<Record<string, Record<string, string>>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [viewMode, setViewMode] = useState<ViewMode>('map');
@@ -27,9 +29,10 @@ export default function FacilitiesPage() {
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
 
-  // Fetch all data
-  const fetchData = useCallback(async () => {
+  // Fetch all data with retry
+  const fetchData = useCallback(async (retryCount = 0) => {
     setLoading(true);
+    setError(null);
     try {
       // Fetch facilities
       const { data: facilitiesData } = await supabase
@@ -108,8 +111,14 @@ export default function FacilitiesPage() {
       setTooltipConfig(tooltipRes.data || []);
       setFilterConfig(filterRes.data || []);
       setQuestions(allQuestions);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      if (retryCount < 2) {
+        const delay = 1000 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return fetchData(retryCount + 1);
+      }
+      setError('Failed to load facilities. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -245,6 +254,9 @@ export default function FacilitiesPage() {
           facilityStates={facilityStates}
           facilitySuburbs={facilitySuburbs}
         />
+
+        {/* Error */}
+        {error && <ErrorAlert message={error} onRetry={() => fetchData()} />}
 
         {/* Content */}
         {loading ? (
