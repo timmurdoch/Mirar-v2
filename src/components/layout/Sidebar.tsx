@@ -14,6 +14,7 @@ import {
   LogOut,
   Map,
   Menu,
+  Settings,
   Users,
   X,
 } from 'lucide-react';
@@ -51,6 +52,12 @@ const navItems: NavItem[] = [
     label: 'Import/Export',
     icon: <Download className="h-5 w-5" />,
     permission: canExportData,
+  },
+  {
+    href: '/admin',
+    label: 'Admin Panel',
+    icon: <Settings className="h-5 w-5" />,
+    permission: canConfigureQuestionnaire,
   },
 ];
 
