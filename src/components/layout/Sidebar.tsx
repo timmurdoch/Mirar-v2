@@ -63,7 +63,7 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const filteredNavItems = navItems.filter((item) => {
@@ -108,12 +108,12 @@ export function Sidebar() {
         <div className="flex items-center gap-3 mb-3">
           <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center">
             <span className="text-sm font-medium text-blue-700">
-              {profile?.full_name?.[0] || profile?.email?.[0] || 'U'}
+              {profile?.full_name?.[0] || profile?.email?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {profile?.full_name || 'User'}
+              {profile?.full_name || profile?.email || user?.email || 'User'}
             </p>
             <p className="text-xs text-gray-500 truncate capitalize">
               {profile?.role?.replace('_', ' ')}
