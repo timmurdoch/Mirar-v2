@@ -63,6 +63,7 @@ export default function FacilityDetailPage() {
         .from('facilities')
         .select('*')
         .eq('id', facilityId)
+        .abortSignal(AbortSignal.timeout(10_000))
         .single();
 
       if (facilityError) throw facilityError;
@@ -82,6 +83,7 @@ export default function FacilityDetailPage() {
         .eq('status', 'published')
         .order('published_at', { ascending: false })
         .limit(1)
+        .abortSignal(AbortSignal.timeout(10_000))
         .single();
 
       if (questionnaireData) {
@@ -102,7 +104,8 @@ export default function FacilityDetailPage() {
           audit_answers (*)
         `)
         .eq('facility_id', facilityId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(AbortSignal.timeout(10_000));
 
       if (auditsData) {
         const typedAudits = auditsData as unknown as AuditWithAnswers[];
@@ -125,7 +128,8 @@ export default function FacilityDetailPage() {
         .select('*')
         .eq('facility_id', facilityId)
         .order('changed_at', { ascending: false })
-        .limit(100);
+        .limit(100)
+        .abortSignal(AbortSignal.timeout(10_000));
 
       setChangeLogs(logsData || []);
     } catch (err) {

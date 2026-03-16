@@ -65,7 +65,8 @@ export default function UsersPage() {
       const { data, error: queryError } = await supabase
         .from('profiles')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(AbortSignal.timeout(10_000));
 
       if (queryError) throw queryError;
       setUsers(data || []);

@@ -39,12 +39,13 @@ export default function FacilitiesPage() {
         .from('facilities')
         .select('*')
         .eq('is_deleted', false)
-        .order('venue_name');
+        .order('venue_name')
+        .abortSignal(AbortSignal.timeout(10_000));
 
       // Fetch configs
       const [tooltipRes, filterRes] = await Promise.all([
-        supabase.from('tooltip_config').select('*').eq('is_active', true),
-        supabase.from('filter_config').select('*').eq('is_active', true),
+        supabase.from('tooltip_config').select('*').eq('is_active', true).abortSignal(AbortSignal.timeout(10_000)),
+        supabase.from('filter_config').select('*').eq('is_active', true).abortSignal(AbortSignal.timeout(10_000)),
       ]);
 
       // Fetch published questionnaire with questions
@@ -60,6 +61,7 @@ export default function FacilitiesPage() {
         .eq('status', 'published')
         .order('published_at', { ascending: false })
         .limit(1)
+        .abortSignal(AbortSignal.timeout(10_000))
         .single();
 
       // Extract questions
@@ -84,7 +86,8 @@ export default function FacilitiesPage() {
             )
           `)
           .in('facility_id', facilityIds)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .abortSignal(AbortSignal.timeout(10_000));
 
         // Build audit data map (latest audit per facility)
         const auditDataMap: Record<string, Record<string, string>> = {};

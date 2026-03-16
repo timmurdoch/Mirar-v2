@@ -79,7 +79,8 @@ export default function QuestionnairePage() {
     const { data } = await supabase
       .from('questionnaire_versions')
       .select('*')
-      .order('version_number', { ascending: false });
+      .order('version_number', { ascending: false })
+      .abortSignal(AbortSignal.timeout(10_000));
 
     setVersions(data || []);
     return data || [];
@@ -96,6 +97,7 @@ export default function QuestionnairePage() {
         )
       `)
       .eq('id', versionId)
+      .abortSignal(AbortSignal.timeout(10_000))
       .single();
 
     if (data) {

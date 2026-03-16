@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('profiles')
       .select('*')
       .eq('id', userId)
+      .abortSignal(AbortSignal.timeout(10_000))
       .maybeSingle();
 
     if (error) {
@@ -159,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
+    router.refresh();
   };
 
   return (
